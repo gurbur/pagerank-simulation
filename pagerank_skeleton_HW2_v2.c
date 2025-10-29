@@ -158,6 +158,19 @@ int main(int argc, char** argv) {
          */
 				MPI_Allreduce(&local_sum, &global_sum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
+				double global_contrib_sum = 0.0;
+
+				if (is_ring == 0) {
+					double local_contrib_sum = 0.0;
+					for (long long j = off; j < off + locN; j++) {
+						if (j > 0) {
+							local_contrib_sum += pagerank_global[j] / outdeg[j];
+						}
+					}
+
+					MPI_Reduce(&local_contrib_sum, &global_contrib_sum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+				}
+
         /* (3) Calculate new PageRank values for the local chunk */
         double local_l1_diff = 0.0;
         /*
@@ -172,15 +185,13 @@ int main(int argc, char** argv) {
 						if (is_ring) {
 								long long target = (i == 0) ? P.N - 1 : i - 1;
 								sum = pagerank_global[target] / outdeg[target];
+								new_pagerank += d * sum;
 						} else { // star case
 								if (i == 0) {
-										for (long long j = 1; j < P.N; j++) {
-												sum += pagerank_global[j] / outdeg[j];
-										}
+									new_pagerank += d * global_contrib_sum;
 								}
 								// else if (i != 0) do_nothing();
 						}
-						new_pagerank += d * sum;
 						local_l1_diff += fabs(new_pagerank - pagerank_global[i]);
 						pagerank_new_local_chunk[i - off] = new_pagerank;
 				}
