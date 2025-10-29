@@ -156,8 +156,10 @@ int main(int argc, char** argv) {
         /*
          * TODO: global_sum 계산
          */
-				MPI_Allreduce(&local_sum, &global_sum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+				// how about... doing it later?
+				//MPI_Allreduce(&local_sum, &global_sum, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
+				// new logics for parallel summation in ring graph
 				double global_contrib_sum = 0.0;
 
 				if (is_ring == 0) {
@@ -197,7 +199,12 @@ int main(int argc, char** argv) {
 				}
 
         /* (4) Check for convergence: L1 norm of two vectors (pagerank_new - pagerank_old) */
-				MPI_Allreduce(&local_l1_diff, &global_l1_diff, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+				// let's send two value at once
+				double local_values[2] = {local_sum, local_l1_diff};
+				double global_values[2];
+				MPI_Allreduce(local_values, global_values, 2, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+				global_sum = global_values[0];
+				global_l1_diff = global_values[1];
         if (global_l1_diff < P.tol) converged = 1;
 
         /* (5) Replicate the new PageRank vector to all processes using Allgatherv */
